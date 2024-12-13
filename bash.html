@@ -1,0 +1,106 @@
+<html>
+<head>
+    <title>FORTIGATE CIS Benchmark Audit Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: #fff;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        tr:hover {
+            background-color: #ddd;
+        }
+        .summary {
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #e7f3fe;
+            border-left: 6px solid #2196F3;
+        }
+        .fail {
+            color: red;
+            font-weight: bold;
+        }
+        .pass {
+            color: green;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>FORTIGATE CIS Benchmark Audit Report</h1>
+    <div class='summary'>
+        <p><strong>Tool:</strong> Fortigate CIS Benchmark Audit Tool</p>
+        <p><strong>Creator:</strong> Priyam Patel</p>
+        <p><strong>Total CIS Benchmark Checks:</strong> 57</p>
+        <p><strong>Total Automated Checks:</strong> 27</p>
+        <p><strong>Total Manual Checks:</strong> 30</p>
+        <p><strong>Not Found:</strong> 23</p>
+        <p><strong>Total PASS:</strong> 15</p>
+        <p><strong>Total FAIL:</strong> 19</p>
+    </div>
+    <table>
+        <tr>
+            <th>Benchmark</th>
+            <th>Result</th>
+            <th>Current</th>
+            <th>Recommendation</th>
+        </tr>
+<tr><td>1.1 Ensure DNS server is configured (Automated)</td><td class='pass'> PASS: DNS server is configured</td><td> dns</td><td> No action needed.</td></tr>
+<tr><td>1.2 Ensure intra-zone traffic is restricted (Manual)</td><td class='pass'> PASS: Intra-zone traffic is not always allowed</td><td> enable</td><td> No action needed.</td></tr>
+<tr><td>1.3 Ensure all management related services are disabled on WAN port (Automated)</td><td class='fail'> FAIL: Management related services are enabled on WAN port</td><td> Expected: set allowaccess none</td><td> Remove 'set allowaccess ping http' from WAN port configuration.</td></tr>
+<tr><td>2.1.1 Ensure 'Pre-Login Banner' is set (Automated)</td><td class='pass'> PASS: Pre-Login Banner is set</td><td> dns</td><td> No action needed.</td></tr>
+<tr><td>2.1.2 Ensure 'Post-Login Banner' is set (Automated)</td><td class='pass'> PASS: Post-Login Banner is set</td><td> dns</td><td> No action needed.</td></tr>
+<tr><td>2.1.3 Ensure timezone is properly configured (Manual)</td><td class='pass'> PASS: Timezone is properly configured</td><td> dns</td><td> No action needed.</td></tr>
+<tr><td>2.1.4 Ensure correct system time is configured through NTP (Automated)</td><td class='pass'> PASS: Correct system time is configured through NTP</td><td> dns</td><td> No action needed.</td></tr>
+<tr><td>2.1.5 Ensure hostname is set (Automated)</td><td class='pass'> PASS: Hostname is set</td><td> dns</td><td> No action needed.</td></tr>
+<tr><td>2.1.6 Ensure the latest firmware is installed (Manual)</td><td class='pass'> PASS: The latest firmware is installed</td><td> dns</td><td> No action needed.</td></tr>
+<tr><td>2.1.7 Disable USB Firmware and configuration installation (Automated)</td><td class='pass'> PASS: USB Firmware and configuration installation is disabled</td><td> dns</td><td> No action needed.</td></tr>
+<tr><td>2.1.8 Disable static keys for TLS (Automated)</td><td class='pass'> PASS: Static keys for TLS are disabled</td><td> dns</td><td> No action needed.</td></tr>
+<tr><td>2.1.9 Enable Global Strong Encryption (Automated)</td><td class='pass'> PASS: Global Strong Encryption is enabled</td><td> dns</td><td> No action needed.</td></tr>
+<tr><td>2.1.10 Ensure management GUI listens on secure TLS version (Manual)</td><td class='pass'> PASS: Management GUI listens on secure TLS version</td><td> dns</td><td> No action needed.</td></tr>
+<tr><td>2.1.11 Ensure CDN is enabled for improved GUI performance (Manual)</td><td class='fail'> FAIL: CDN is not enabled for improved GUI performance</td><td> dns</td><td> Enable CDN for improved GUI performance in the configuration file.</td></tr>
+<tr><td>2.2.1 Ensure 'Password Policy' is enabled (Automated)</td><td class='fail'> FAIL: Password Policy is not enabled</td><td> dns</td><td> Enable Password Policy in the configuration file.</td></tr>
+<tr><td>2.2.2 Ensure administrator password retries and lockout time are configured (Automated)</td><td class='pass'> PASS: Administrator password retries and lockout time are configured</td><td> dns</td><td> No action needed.</td></tr>
+<tr><td>2.3.1 Ensure only SNMPv3 is enabled (Automated)</td><td class='fail'> FAIL: Only SNMPv3 is not enabled</td><td> dns</td><td> Enable only SNMPv3 in the configuration file.</td></tr>
+<tr><td>2.4.4 Ensure idle timeout time is configured (Automated)</td><td class='fail'> FAIL: Idle timeout time is not configured</td><td> dns</td><td> Configure idle timeout time in the configuration file.</td></tr>
+<tr><td>2.4.5 Ensure only encrypted access channels are enabled (Automated)</td><td class='fail'> FAIL: Only encrypted access channels are not enabled</td><td> dns</td><td> Enable only encrypted access channels in the configuration file.</td></tr>
+<tr><td>2.4.9 Ensure High Availability configuration is enabled (Manual)</td><td class='pass'> PASS: High Availability configuration is enabled</td><td> dns</td><td> No action needed.</td></tr>
+<tr><td>2.4.10 Ensure 'Monitor Interfaces' for High Availability devices is enabled (Manual)</td><td class='fail'> FAIL: 'Monitor Interfaces' for High Availability devices is not enabled</td><td> dns</td><td> Enable 'Monitor Interfaces' for High Availability devices in the configuration file.</td></tr>
+<tr><td>2.4.11 Ensure HA Reserved Management Interface is configured (Manual)</td><td class='fail'> FAIL: HA Reserved Management Interface is not configured</td><td> dns</td><td> Configure HA Reserved Management Interface in the configuration file.</td></tr>
+<tr><td>3.2 Ensure that policies do not use 'ALL' as Service (Automated)</td><td class='pass'> PASS: Policies do not use 'ALL' as Service</td><td> dns</td><td> No action needed.</td></tr>
+<tr><td>4.2.1 Ensure Antivirus Definition Push Updates are Configured (Automated)</td><td class='fail'> FAIL: Antivirus Definition Push Updates are not configured</td><td> dns</td><td> Configure Antivirus Definition Push Updates in the configuration file.</td></tr>
+<tr><td>4.2.3 Ensure Outbreak Prevention Database (Automated)</td><td class='fail'> FAIL: Outbreak Prevention Database is not enabled</td><td> dns</td><td> Enable Outbreak Prevention Database in the configuration file.</td></tr>
+<tr><td>4.2.4 Ensure AI/heuristic based malware detection is enabled (Automated)</td><td class='fail'> FAIL: AI/heuristic based malware detection is not enabled</td><td> dns</td><td> Enable AI/heuristic based malware detection in the configuration file.</td></tr>
+<tr><td>4.2.5 Ensure Grayware detection on antivirus is enabled (Automated)</td><td class='fail'> FAIL: Grayware detection on antivirus is not enabled</td><td> dns</td><td> Enable Grayware detection on antivirus in the configuration file.</td></tr>
+<tr><td>4.3.1 Ensure Botnet C&C Domain Blocking DNS Filter is enabled (Automated)</td><td class='fail'> FAIL: Botnet C&C Domain Blocking DNS Filter is not enabled</td><td> dns</td><td> Enable Botnet C&C Domain Blocking DNS Filter in the configuration file.</td></tr>
+<tr><td>4.4.1 Ensure applications running on non-default ports are blocked (Automated)</td><td class='fail'> FAIL: Applications running on non-default ports are blocked</td><td> dns</td><td> Block applications running on non-default ports in the configuration file.</td></tr>
+<tr><td>5.1.1 Enable Compromised Host Quarantine (Automated)</td><td class='fail'> FAIL: Compromised Host Quarantine is not enabled</td><td> dns</td><td> Enable Compromised Host Quarantine in the configuration file.</td></tr>
+<tr><td>5.2.1.1 Ensure Security Fabric is Configured (Automated)</td><td class='fail'> FAIL: Security Fabric is not Configured</td><td> dns</td><td> Enable Security Fabric in the configuration file.</td></tr>
+<tr><td>7.1.1 Enable Event Logging (Automated)</td><td class='fail'> FAIL: Event Logging is not enabled</td><td> dns</td><td> Enable Event Logging in the configuration file.</td></tr>
+<tr><td>7.2.1 Encrypt Log Transmission to FortiAnalyzer / FortiManager (Automated)</td><td class='fail'> FAIL: Log Transmission to FortiAnalyzer / FortiManager is not enabled</td><td> dns</td><td> Enable encryption for Logs Sent to FortiAnalyzer / FortiManager in the configuration file.</td></tr>
+<tr><td>7.3.1 Centralized Logging and Reporting (Automated)</td><td class='fail'> FAIL: Centralized Logging and Reporting is not enabled</td><td> dns</td><td> Enable Centralized Logging and Reporting in the configuration file.</td></tr>
+</table>
+</body>
+</html>

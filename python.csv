@@ -1,0 +1,47 @@
+Benchmark ID,Description,Result,Fix Location,Fix Commands
+check_admin_concurrent_sessions,,FAIL: Concurrent admin sessions not properly limited,Location not specified,No fix commands available
+check_admin_https,,FAIL: HTTP access is enabled,Location not specified,No fix commands available
+check_admin_https_redirect,,PASS: Admin HTTPS redirect is enabled,Location not specified,No fixes needed
+check_admin_lockout,,PASS: Administrator account lockout is enabled,Location not specified,No fixes needed
+check_admin_password_change,,FAIL: Admin password change on first login is not enabled,Location not specified,No fix commands available
+check_admin_port,,FAIL: Default admin port (80) is still in use,Location not specified,No fix commands available
+check_admin_ssh_grace_time,,PASS: SSH grace time is set to 60 seconds or less,Location not specified,No fixes needed
+check_admin_ssh_port,,FAIL: SSH port is using default port 22,Location not specified,No fix commands available
+check_admin_ssh_v1,,PASS: SSH v1 is disabled,Location not specified,No fixes needed
+check_admin_timeout,,FAIL: Admin timeout is not properly configured,Location not specified,No fix commands available
+check_antivirus_updates,,FAIL: Antivirus definition updates are not enabled,Location not specified,No fix commands available
+check_application_control,,FAIL: Application control is not properly configured,Location not specified,No fix commands available
+check_bgp_neighbor_authentication,,PASS: BGP neighbor authentication is configured,Location not specified,No fixes needed
+check_default_admin_profile,,PASS: Default admin profile is not used,Location not specified,No fixes needed
+check_dns_configuration,,PASS: DNS server is configured,Location not specified,No fixes needed
+check_dos_policy,,FAIL: DoS protection is not enabled,Location not specified,No fix commands available
+check_fips_mode,,FAIL: FIPS mode is not enabled,Location not specified,No fix commands available
+check_fortianalyzer_logging,,FAIL: FortiAnalyzer logging is not enabled,Location not specified,No fix commands available
+check_global_strong_encryption,,PASS: Global Strong Encryption is enabled,Location not specified,No fixes needed
+check_ha_configuration,,PASS: High Availability configuration is enabled,Location not specified,No fixes needed
+check_ha_monitor_interfaces,,FAIL: 'Monitor Interfaces' for High Availability devices is not enabled,Location not specified,No fix commands available
+check_hostname_configuration,,PASS: Hostname is set,Location not specified,No fixes needed
+check_idle_timeout,,FAIL: Idle timeout time is not configured,Location not specified,No fix commands available
+check_interface_trusted_hosts,,FAIL: Interface trusted hosts are not configured,Location not specified,No fix commands available
+check_intra_zone_traffic,,PASS: Intra-zone traffic is not always allowed,Location not specified,No fixes needed
+check_ips_signatures,,PASS: IPS signature updates are configured,Location not specified,No fixes needed
+check_log_disk_usage,,PASS: Log disk usage alerts are configured,Location not specified,No fixes needed
+check_ntp_configuration,,PASS: Correct system time is configured through NTP,Location not specified,No fixes needed
+check_ntp_servers,,PASS: At least two NTP servers are configured,Location not specified,No fixes needed
+check_ospf_authentication,,PASS: OSPF authentication is configured,Location not specified,No fixes needed
+check_password_hash_algorithm,,FAIL: Weak password hash algorithm in use,Location not specified,No fix commands available
+check_password_policy,,FAIL: Password policy is not properly configured,Location not specified,No fix commands available
+check_password_retries_lockout,,PASS: Administrator password retries and lockout time are configured,Location not specified,No fixes needed
+check_post_login_banner,,PASS: Post-Login Banner is set,Location not specified,No fixes needed
+check_pre_login_banner,,PASS: Pre-Login Banner is set,Location not specified,No fixes needed
+check_sdwan_configuration,,FAIL: SD-WAN is not configured,Location not specified,No fix commands available
+check_snmpv3_only,,FAIL: Only SNMPv3 is not enabled,Location not specified,No fix commands available
+check_ssl_inspection,,PASS: SSL/SSH inspection is properly configured,Location not specified,No fixes needed
+check_ssl_versions,,PASS: Only approved SSL/TLS versions are enabled,Location not specified,No fixes needed
+check_strong_encryption,,PASS: Strong encryption is enabled,Location not specified,No fixes needed
+check_syslog_server,,FAIL: Syslog server is not configured,Location not specified,No fix commands available
+check_timezone_configuration,,PASS: Timezone is properly configured,Location not specified,No fixes needed
+check_trusted_hosts,,FAIL: Trusted hosts are not configured,Location not specified,No fix commands available
+check_usb_disable,,PASS: USB Firmware and configuration installation is disabled,Location not specified,No fixes needed
+check_wan_management_services,,FAIL: Management related services are enabled on WAN port,Location not specified,No fix commands available
+check_web_filtering,,FAIL: Web filtering is not enabled,Location not specified,No fix commands available

@@ -1,0 +1,57 @@
+1.1 Ensure DNS server is configured (Automated), PASS: DNS server is configured, dns, No action needed.
+1.2 Ensure intra-zone traffic is restricted (Manual), PASS: Intra-zone traffic is not always allowed, enable, No action needed.
+1.3 Ensure all management related services are disabled on WAN port (Automated), FAIL: Management related services are enabled on WAN port, Expected: set allowaccess none, Remove 'set allowaccess ping http' from WAN port configuration.
+2.1.1 Ensure 'Pre-Login Banner' is set (Automated), PASS: Pre-Login Banner is set, dns, No action needed.
+2.1.2 Ensure 'Post-Login Banner' is set (Automated), PASS: Post-Login Banner is set, dns, No action needed.
+2.1.3 Ensure timezone is properly configured (Manual), PASS: Timezone is properly configured, dns, No action needed.
+2.1.4 Ensure correct system time is configured through NTP (Automated), PASS: Correct system time is configured through NTP, dns, No action needed.
+2.1.5 Ensure hostname is set (Automated), PASS: Hostname is set, dns, No action needed.
+2.1.6 Ensure the latest firmware is installed (Manual), PASS: The latest firmware is installed, dns, No action needed.
+2.1.7 Disable USB Firmware and configuration installation (Automated), PASS: USB Firmware and configuration installation is disabled, dns, No action needed.
+2.1.8 Disable static keys for TLS (Automated), PASS: Static keys for TLS are disabled, dns, No action needed.
+2.1.9 Enable Global Strong Encryption (Automated), PASS: Global Strong Encryption is enabled, dns, No action needed.
+2.1.10 Ensure management GUI listens on secure TLS version (Manual), PASS: Management GUI listens on secure TLS version, dns, No action needed.
+2.1.11 Ensure CDN is enabled for improved GUI performance (Manual), FAIL: CDN is not enabled for improved GUI performance, dns, Enable CDN for improved GUI performance in the configuration file.
+2.1.12 Ensure single CPU core overloaded event is logged (Manual), This check requires manual verification, dns, No action needed.
+2.2.1 Ensure 'Password Policy' is enabled (Automated), FAIL: Password Policy is not enabled, dns, Enable Password Policy in the configuration file.
+2.2.2 Ensure administrator password retries and lockout time are configured (Automated), PASS: Administrator password retries and lockout time are configured, dns, No action needed.
+2.3.1 Ensure only SNMPv3 is enabled (Automated), FAIL: Only SNMPv3 is not enabled, dns, Enable only SNMPv3 in the configuration file.
+2.3.2 Allow only trusted hosts in SNMPv3 (Manual), This check requires manual verification, dns, No action needed.
+2.4.1 Ensure default 'admin' password is changed (Manual), This check requires manual verification, dns, No action needed.
+2.4.2 Ensure all the login accounts having specific trusted hosts enabled (Manual), This check requires manual verification, dns, No action needed.
+2.4.3 Ensure admin accounts with different privileges have their correct profiles assigned (Manual), This check requires manual verification, dns, No action needed.
+2.4.4 Ensure idle timeout time is configured (Automated), FAIL: Idle timeout time is not configured, dns, Configure idle timeout time in the configuration file.
+2.4.5 Ensure only encrypted access channels are enabled (Automated), FAIL: Only encrypted access channels are not enabled, dns, Enable only encrypted access channels in the configuration file.
+2.4.6 Ensure Local-in Policies are applied (Manual), This check requires manual verification, dns, No action needed.
+2.4.7 Ensure default Admin ports are changed (Manual), This check requires manual verification, dns, No action needed.
+2.4.8 Ensure virtual patching on the local-in management interface is enabled (Manual), This check requires manual verification, dns, No action needed.
+2.4.9 Ensure High Availability configuration is enabled (Manual), PASS: High Availability configuration is enabled, dns, No action needed.
+2.4.10 Ensure 'Monitor Interfaces' for High Availability devices is enabled (Manual), FAIL: 'Monitor Interfaces' for High Availability devices is not enabled, dns, Enable 'Monitor Interfaces' for High Availability devices in the configuration file.
+2.4.11 Ensure HA Reserved Management Interface is configured (Manual), FAIL: HA Reserved Management Interface is not configured, dns, Configure HA Reserved Management Interface in the configuration file.
+3.1 Ensure that unused policies are reviewed regularly (Manual), This check requires manual verification, dns, No action needed.
+3.2 Ensure that policies do not use 'ALL' as Service (Automated), PASS: Policies do not use 'ALL' as Service, dns, No action needed.
+3.3 Ensure firewall policy denying all traffic to/from Tor, malicious server, or scanner IP addresses using ISDB (Manual), This check requires manual verification, dns, No action needed.
+3.4 Ensure logging is enabled on all firewall policies (Manual), This check requires manual verification, dns, No action needed.
+4.1.1 Detect Botnet connections (Manual), This check requires manual verification, dns, No action needed.
+4.1.2 Apply IPS Security Profile to Policies (Manual), This check requires manual verification, dns, No action needed.
+4.2.1 Ensure Antivirus Definition Push Updates are Configured (Automated), FAIL: Antivirus Definition Push Updates are not configured, dns, Configure Antivirus Definition Push Updates in the configuration file.
+4.2.2 Apply Antivirus Security Profile to Policies (Manual), This check requires manual verification, dns, No action needed.
+4.2.3 Ensure Outbreak Prevention Database (Automated), FAIL: Outbreak Prevention Database is not enabled, dns, Enable Outbreak Prevention Database in the configuration file.
+4.2.4 Ensure AI/heuristic based malware detection is enabled (Automated), FAIL: AI/heuristic based malware detection is not enabled, dns, Enable AI/heuristic based malware detection in the configuration file.
+4.2.5 Ensure Grayware detection on antivirus is enabled (Automated), FAIL: Grayware detection on antivirus is not enabled, dns, Enable Grayware detection on antivirus in the configuration file.
+4.2.6 Ensure inline scanning sandbox is enabled (Manual), This check requires manual verification, dns, No action needed.
+4.3.1 Ensure Botnet C&C Domain Blocking DNS Filter is enabled (Automated), FAIL: Botnet C&C Domain Blocking DNS Filter is not enabled, dns, Enable Botnet C&C Domain Blocking DNS Filter in the configuration file.
+4.3.2 Ensure logging is enabled on DNS Filter (Manual), This check requires manual verification, dns, No action needed.
+4.3.3 Apply DNS Filter Security Profile to Policies (Manual), This check requires manual verification, dns, No action needed.
+4.3.4 Block high-risk categories (Manual), This check requires manual verification, dns, No action needed.
+4.4.1 Ensure applications running on non-default ports are blocked (Automated), FAIL: Applications running on non-default ports are blocked, dns, Block applications running on non-default ports in the configuration file.
+4.4.2 Ensure logging is enabled on Application Control (Manual), This check requires manual verification, dns, No action needed.
+4.4.3 Apply Application Control Security Profile to Policies (Manual), This check requires manual verification, , No action needed.
+5.1.1 Enable Compromised Host Quarantine (Automated), FAIL: Compromised Host Quarantine is not enabled, dns, Enable Compromised Host Quarantine in the configuration file.
+5.2.1.1 Ensure Security Fabric is Configured (Automated), FAIL: Security Fabric is not Configured, dns, Enable Security Fabric in the configuration file.
+6.1.1 Apply a Trusted Signed Certificate for VPN Portal (Manual), This check requires manual verification, dns, No action needed.
+6.1.2 Enable Limited TLS Versions for SSL VPN (Manual), This check requires manual verification, dns, No action needed.
+7.1.1 Enable Event Logging (Automated), FAIL: Event Logging is not enabled, dns, Enable Event Logging in the configuration file.
+7.2.1 Encrypt Logs Sent to FortiAnalyzer / FortiManager (Automated), This check requires manual verification, dns, No action needed.
+7.2.1 Encrypt Log Transmission to FortiAnalyzer / FortiManager (Automated), FAIL: Log Transmission to FortiAnalyzer / FortiManager is not enabled, dns, Enable encryption for Logs Sent to FortiAnalyzer / FortiManager in the configuration file.
+7.3.1 Centralized Logging and Reporting (Automated), FAIL: Centralized Logging and Reporting is not enabled, dns, Enable Centralized Logging and Reporting in the configuration file.
