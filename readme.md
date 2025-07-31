@@ -132,7 +132,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Author
 
-[Priyam Patel](https://www.linkedin.com/in/priyam-patel-450307206/){:target="_blank"}
+[Priyam Patel](https://www.linkedin.com/in/priyam-patel-450307206/)
 
 ## Version
 
