@@ -2,6 +2,7 @@
 
 import os
 import re
+import sys
 from datetime import datetime
 import csv
 
@@ -253,7 +254,7 @@ class FortigateCISAudit:
             return "PASS: Admin timeout is set to 5 minutes or less"
         return "FAIL: Admin timeout is not properly configured"
 
-    def check_admin_ssh_grace_time(self):
+    def check_admin_ssh_grace_time_v2(self):
         """1.1.2 Ensure 'admin-ssh-grace-time' is set to 60 seconds or less"""
         if (self.grep_config(r"config system global") and 
             self.grep_config(r"set admin-ssh-grace-time [1-6][0-9]")):
@@ -286,7 +287,7 @@ class FortigateCISAudit:
             return "PASS: Trusted hosts are configured"
         return "FAIL: Trusted hosts are not configured"
 
-    def check_password_policy(self):
+    def check_password_policy_v2(self):
         """1.2.2 Ensure password policy is enabled"""
         conditions = [
             r"set status enable",
@@ -346,14 +347,7 @@ class FortigateCISAudit:
 
     def check_ssl_versions(self):
         """2.1.2 Ensure only approved SSL/TLS versions are used"""
-        conditions = [
-            r"set ssl-min-proto-version tls1-2",
-            not self.grep_config(r"ssl-min-proto-version ssl3"),
-            not self.grep_config(r"ssl-min-proto-version tls1-0"),
-            not self.grep_config(r"ssl-min-proto-version tls1-1")
-        ]
-        
-        if all(conditions):
+        if self.grep_config(r"set ssl-min-proto-version tls1-2"):
             return "PASS: Only approved SSL/TLS versions are enabled"
         return "FAIL: Insecure SSL/TLS versions are enabled"
 
@@ -659,5 +653,4 @@ def main():
     auditor.generate_csv_report(results)
 
 if __name__ == "__main__":
-    import sys
     main()

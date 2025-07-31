@@ -1,0 +1,414 @@
+
+        <html>
+        <head>
+            <title>FortiGate CIS Audit Report</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                .pass { color: green; }
+                .fail { color: red; }
+                .summary { margin-bottom: 20px; }
+                .fix-commands { background-color: #f8f9fa; padding: 10px; margin-top: 5px; font-family: monospace; }
+            </style>
+        </head>
+        <body>
+            <h1>FortiGate CIS Audit Report</h1>
+            <div class="summary">
+                <p>Total Checks: 48 | Passed: 24 | Failed: 24</p>
+            </div>
+            <table>
+                <tr>
+                    <th>Benchmark</th>
+                    <th>Result</th>
+                    <th>Fix Location</th>
+                    <th>Fix Commands</th>
+                </tr>
+                <tr>
+                    <td>check_admin_concurrent_sessions</td>
+                    <td class="fail">FAIL: Concurrent admin sessions not properly limited</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_admin_https</td>
+                    <td class="fail">FAIL: HTTP access is enabled</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_admin_https_redirect</td>
+                    <td class="pass">PASS: Admin HTTPS redirect is enabled</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_admin_lockout</td>
+                    <td class="pass">PASS: Administrator account lockout is enabled</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_admin_password_change</td>
+                    <td class="fail">FAIL: Admin password change on first login is not enabled</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_admin_port</td>
+                    <td class="fail">FAIL: Default admin port (80) is still in use</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_admin_ssh_grace_time</td>
+                    <td class="pass">PASS: SSH grace time is properly configured</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_admin_ssh_grace_time_v2</td>
+                    <td class="pass">PASS: SSH grace time is set to 60 seconds or less</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_admin_ssh_port</td>
+                    <td class="fail">FAIL: SSH port is using default port 22</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_admin_ssh_v1</td>
+                    <td class="pass">PASS: SSH v1 is disabled</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_admin_timeout</td>
+                    <td class="fail">FAIL: Admin timeout is not properly configured</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_antivirus_updates</td>
+                    <td class="fail">FAIL: Antivirus definition updates are not enabled</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_application_control</td>
+                    <td class="fail">FAIL: Application control is not properly configured</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_bgp_neighbor_authentication</td>
+                    <td class="pass">PASS: BGP neighbor authentication is configured</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_default_admin_profile</td>
+                    <td class="pass">PASS: Default admin profile is not used</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_dns_configuration</td>
+                    <td class="pass">PASS: DNS server is configured</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_dos_policy</td>
+                    <td class="fail">FAIL: DoS protection is not enabled</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_fips_mode</td>
+                    <td class="fail">FAIL: FIPS mode is not enabled</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_fortianalyzer_logging</td>
+                    <td class="fail">FAIL: FortiAnalyzer logging is not enabled</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_global_strong_encryption</td>
+                    <td class="pass">PASS: Global Strong Encryption is enabled</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_ha_configuration</td>
+                    <td class="pass">PASS: High Availability configuration is enabled</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_ha_monitor_interfaces</td>
+                    <td class="fail">FAIL: 'Monitor Interfaces' for High Availability devices is not enabled</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_hostname_configuration</td>
+                    <td class="pass">PASS: Hostname is set</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_idle_timeout</td>
+                    <td class="fail">FAIL: Idle timeout time is not configured</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_interface_trusted_hosts</td>
+                    <td class="fail">FAIL: Interface trusted hosts are not configured</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_intra_zone_traffic</td>
+                    <td class="pass">PASS: Intra-zone traffic is not always allowed</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_ips_signatures</td>
+                    <td class="pass">PASS: IPS signature updates are configured</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_log_disk_usage</td>
+                    <td class="pass">PASS: Log disk usage alerts are configured</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_ntp_configuration</td>
+                    <td class="pass">PASS: Correct system time is configured through NTP</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_ntp_servers</td>
+                    <td class="pass">PASS: At least two NTP servers are configured</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_ospf_authentication</td>
+                    <td class="pass">PASS: OSPF authentication is configured</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_password_hash_algorithm</td>
+                    <td class="fail">FAIL: Weak password hash algorithm in use</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_password_policy</td>
+                    <td class="fail">FAIL: Password Policy is not enabled</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_password_policy_v2</td>
+                    <td class="fail">FAIL: Password policy is not properly configured</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_password_retries_lockout</td>
+                    <td class="pass">PASS: Administrator password retries and lockout time are configured</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_post_login_banner</td>
+                    <td class="pass">PASS: Post-Login Banner is set</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_pre_login_banner</td>
+                    <td class="pass">PASS: Pre-Login Banner is set</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_sdwan_configuration</td>
+                    <td class="fail">FAIL: SD-WAN is not configured</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_snmpv3_only</td>
+                    <td class="fail">FAIL: Only SNMPv3 is not enabled</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_ssl_inspection</td>
+                    <td class="pass">PASS: SSL/SSH inspection is properly configured</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_ssl_versions</td>
+                    <td class="fail">FAIL: Insecure SSL/TLS versions are enabled</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_strong_encryption</td>
+                    <td class="pass">PASS: Strong encryption is enabled</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_syslog_server</td>
+                    <td class="fail">FAIL: Syslog server is not configured</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_timezone_configuration</td>
+                    <td class="pass">PASS: Timezone is properly configured</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_trusted_hosts</td>
+                    <td class="fail">FAIL: Trusted hosts are not configured</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_usb_disable</td>
+                    <td class="pass">PASS: USB Firmware and configuration installation is disabled</td>
+                    <td></td>
+                    <td>
+                        <div class="fix-commands"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_wan_management_services</td>
+                    <td class="fail">FAIL: Management related services are enabled on WAN port</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>check_web_filtering</td>
+                    <td class="fail">FAIL: Web filtering is not enabled</td>
+                    <td>Location not specified</td>
+                    <td>
+                        <div class="fix-commands">No fix commands available</div>
+                    </td>
+                </tr>
+            </table>
+        </body>
+        </html>

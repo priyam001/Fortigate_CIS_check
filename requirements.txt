@@ -1,0 +1,14 @@
+# Python requirements for Fortigate CIS Checker
+# No external dependencies required - uses only standard library modules
+# The following are already included in Python standard library:
+# - os
+# - re
+# - sys
+# - datetime
+# - csv
+
+# Optional: For better CSV handling (already included in Python 3.6+)
+# csv>=1.0
+
+# Optional: For enhanced regex support (already included)
+# re>=2.2.1

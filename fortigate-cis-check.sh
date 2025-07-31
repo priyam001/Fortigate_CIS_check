@@ -1,14 +1,10 @@
 #!/bin/bash
 
-
-
 # Tool information banner
 echo "========================================"
 echo "Tool: Fortigate CIS Benchmark Audit Tool"
 echo "Creator: Priyam Patel"
 echo "========================================"
-
-
 
 check_dns_configuration() {
     local config_file="$1"
@@ -939,7 +935,7 @@ if [[ "$log_transmission_to_forti_result" == *"FAIL"* ]]; then
 else
     log_transmission_to_forti_recommendation="No action needed."
 fi
-echo "7.2.1 Encrypt Log Transmission to FortiAnalyzer / FortiManager (Automated), $log_transmission_to_forti_result, $current_dns, $log_transmission_to_forti_recommendation" >> "$CSV_FILE"
+echo "7.2.2 Encrypt Log Transmission to FortiAnalyzer / FortiManager (Automated), $log_transmission_to_forti_result, $current_dns, $log_transmission_to_forti_recommendation" >> "$CSV_FILE"
 
 centralized_logging_reporting_result=$(check_centralized_logging_reporting "$config_file")
 if [[ "$centralized_logging_reporting_result" == *"FAIL"* ]]; then

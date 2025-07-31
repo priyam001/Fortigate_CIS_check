@@ -50,6 +50,31 @@ Choose the implementation that best suits your environment and requirements.
 
 ### Bash Implementation
 1. Download the script:
+   ```bash
+   wget https://raw.githubusercontent.com/example/fortigate-cis-check/main/fortigate-cis-check.sh
+   chmod +x fortigate-cis-check.sh
+   ```
+
+2. Run the script:
+   ```bash
+   ./fortigate-cis-check.sh /path/to/fortigate-config.txt
+   ```
+
+### Python Implementation
+1. Download the script:
+   ```bash
+   wget https://raw.githubusercontent.com/example/fortigate-cis-check/main/fortigate_cis_checker.py
+   ```
+
+2. Install required dependencies:
+   ```bash
+   pip3 install -r requirements.txt
+   ```
+
+3. Run the script:
+   ```bash
+   python3 fortigate_cis_checker.py /path/to/fortigate-config.txt
+   ```
 
 ## Output Files
 
@@ -126,7 +151,7 @@ Common issues and solutions:
 
 1. Permission denied
 ```bash
-chmod +x fortigate-csi-check.sh
+chmod +x fortigate-cis-check.sh
 ```
 
 2. Invalid configuration file
