@@ -1,656 +1,266 @@
 #!/usr/bin/env python3
-
-import os
-import re
-import sys
+import re, sys, csv, io
 from datetime import datetime
-import csv
+from pathlib import Path
 
-class FortigateCISAudit:
-    def __init__(self, config_file):
-        self.config_file = config_file
-        self.csv_file = f"FORTIGATE_7.0.x_CIS_BENCHMARK_v1.3.0_AUDIT_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-        self.html_file = f"FORTIGATE_7.0.x_CIS_BENCHMARK_v1.3.0_AUDIT_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
-        # Load the config content during initialization
+OK="PASS"; BAD="FAIL"
+
+def read_config(path:str)->str:
+    try:
+        return Path(path).read_text(encoding="utf-8", errors="ignore")
+    except Exception as e:
+        print(f"Error reading {path}: {e}")
+        return ""
+
+def find_blocks(cfg:str, header:str)->list[str]:
+    blocks=[]
+    pat = re.compile(rf'(^|\n)config {re.escape(header)}\b.*?\nend\s*', re.S|re.I)
+    for m in pat.finditer(cfg):
+        blocks.append(m.group(0))
+    return blocks
+
+def get_lines(block:str)->list[str]:
+    return [ln.strip() for ln in block.splitlines()]
+
+def contains(block:str, rex:str)->bool:
+    try:
+        return bool(re.search(rex, block, re.I|re.M))
+    except re.error:
+        return False
+
+def extract_kv(block:str, key:str)->list[str]:
+    vals=[]
+    r = re.compile(rf'^\s*set\s+{re.escape(key)}\s+(.+)$', re.I|re.M)
+    for m in r.finditer(block):
+        vals.append(m.group(1).strip())
+    return vals
+
+def csv_write(rows, outpath:str):
+    # Force UTF-8 for Windows
+    with open(outpath, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["Benchmark", "Result", "Details", "Where to fix", "Suggested CLI"])
+        w.writerows(rows)
+
+def html_write(rows, outpath:str):
+    total = len(rows); passed = sum(1 for r in rows if r[1]==OK); failed = total-passed
+    html = [f"""
+<html><head><meta charset='utf-8'>
+<title>FortiGate CIS Audit Report (improved)</title>
+<style>
+body{{font-family:system-ui,Arial;margin:20px}}
+table{{border-collapse:collapse;width:100%}}
+th,td{{border:1px solid #ddd;padding:8px;text-align:left}}
+th{{background:#f5f5f5}}
+.pass{{color:#2e7d32;font-weight:600}}
+.fail{{color:#c62828;font-weight:600}}
+pre{{white-space:pre-wrap;background:#fafafa;border:1px dashed #ccc;padding:8px;border-radius:8px}}
+.summary{{margin:12px 0;font-weight:600}}
+</style></head><body>
+<h1>FortiGate CIS Audit Report (improved)</h1>
+<div class='summary'>Total: {total} | Passed: {passed} | Failed: {failed}</div>
+<table><tr><th>Benchmark</th><th>Result</th><th>Details</th><th>Where to fix</th><th>Suggested CLI</th></tr>"""]
+    for b,res,det,where,cli in rows:
+        klass = "pass" if res==OK else "fail"
+        html.append(f"<tr><td>{b}</td><td class='{klass}'>{res}</td><td>{det}</td><td>{where}</td><td><pre>{cli if res==BAD and cli else ''}</pre></td></tr>")
+    html.append("</table></body></html>")
+    Path(outpath).write_text("".join(html), encoding="utf-8")
+
+# ===================== CIS CHECKS =====================
+
+def check_admin_timeout(cfg:str):
+    for key in ("admin-timeout","admintimeout"):
+        m = re.search(rf'set\s+{key}\s+(\d+)', cfg, re.I)
+        if m:
+            v=int(m.group(1))
+            if v<=5:
+                return ("1.1.1 Admin timeout ≤ 5 minutes", OK, f"{key}={v}",
+                        "System > Settings > Administration",
+                        f"config system global\n    set {key} 5\nend")
+            else:
+                return ("1.1.1 Admin timeout ≤ 5 minutes", BAD,
+                        f"{key} is {v} (should be ≤5)",
+                        "System > Settings > Administration",
+                        f"config system global\n    set {key} 5\nend")
+    return ("1.1.1 Admin timeout ≤ 5 minutes", BAD, "Not set",
+            "System > Settings > Administration",
+            "config system global\n    set admintimeout 5\nend")
+
+def check_ssh_grace(cfg:str):
+    key="admin-ssh-grace-time"
+    m = re.search(rf'set\s+{key}\s+(\d+)', cfg, re.I)
+    if m:
+        v=int(m.group(1))
+        return ("1.1.2 SSH grace-time ≤ 60s", OK if v<=60 else BAD,
+                f"{key}={v}",
+                "System > Settings > Administration",
+                f"config system global\n    set {key} 60\nend" if v>60 else "")
+    return ("1.1.2 SSH grace-time ≤ 60s", BAD, "Not set",
+            "System > Settings > Administration",
+            f"config system global\n    set {key} 60\nend")
+
+def check_ssh_v1(cfg:str):
+    if re.search(r'set\s+admin-ssh-v1\s+enable', cfg, re.I):
+        return ("1.1.3 SSH v1 disabled", BAD, "admin-ssh-v1 is enable",
+                "System > Settings > Administration",
+                "config system global\n    set admin-ssh-v1 disable\nend")
+    return ("1.1.3 SSH v1 disabled", OK, "admin-ssh-v1 not enabled", "", "")
+
+def check_concurrent(cfg:str):
+    for key in ("admin-concurrent-sessions","admin-concurrent"):
+        m = re.search(rf'set\s+{key}\s+(\d+)', cfg, re.I)
+        if m:
+            v=int(m.group(1))
+            return ("1.1.4 Concurrent admin sessions = 1",
+                    OK if v==1 else BAD, f"{key}={v}",
+                    "System > Settings > Administration",
+                    f"config system global\n    set {key} 1\nend" if v!=1 else "")
+    return ("1.1.4 Concurrent admin sessions = 1", BAD, "Not set",
+            "System > Settings > Administration",
+            "config system global\n    set admin-concurrent-sessions 1\nend")
+
+def check_change_admin_port(cfg:str):
+    m = re.search(r'set\s+admin-port\s+(\d+)', cfg, re.I)
+    if m and m.group(1)=="80":
+        return ("1.1.5 Change default admin HTTP port", BAD, "admin-port=80",
+                "System > Settings > Administration",
+                "config system global\n    set admin-port 8443\nend")
+    return ("1.1.5 Change default admin HTTP port", OK,
+            "Not using 80 for admin-port", "", "")
+
+def check_trusted_hosts_admin(cfg:str):
+    admin_blocks = find_blocks(cfg, "system admin")
+    bad_admins=[]
+    if not admin_blocks:
+        return ("1.2.1 Trusted hosts on all admin accounts", BAD,
+                "No 'config system admin' found",
+                "System > Admin > Administrator",
+                "config system admin\n  edit <user>\n    set trusthost1 <ip/mask>\n  next\nend")
+    for blk in admin_blocks:
+        edits = re.split(r'\n\s*edit\s+"?([^"\n]+)"?\s*\n', blk, flags=re.I)
+        for i in range(1, len(edits), 2):
+            name = edits[i].strip()
+            body = edits[i+1]
+            th = re.findall(r'set\s+trusthost\d+\s+([0-9\.]+\s+[0-9\.]+)', body, flags=re.I)
+            ip6 = re.findall(r'set\s+ip6-trusthost\d+\s+([0-9A-Fa-f:\/]+)', body, flags=re.I)
+            def is_open(v):
+                return v.strip().startswith("0.0.0.0") or v.strip().startswith("::/0")
+            if not th and not ip6:
+                bad_admins.append((name, "no trusted hosts set"))
+            elif any(is_open(v) for v in th) or any(v.strip()=="::/0" for v in ip6):
+                bad_admins.append((name, "overly permissive trusted host (0.0.0.0/::/0)"))
+    if bad_admins:
+        det = "; ".join([f"{n}: {r}" for n,r in bad_admins])
+        cli = "config system admin\n" + "\n".join(
+            [f"  edit {n}\n    set trusthost1 192.0.2.0 255.255.255.0\n  next" for n,_ in bad_admins]
+        ) + "\nend"
+        return ("1.2.1 Trusted hosts on all admin accounts", BAD, det,
+                "System > Admin > Administrator", cli)
+    return ("1.2.1 Trusted hosts on all admin accounts", OK,
+            "All admins have scoped trusted hosts", "", "")
+
+def check_password_policy(cfg:str):
+    pol = find_blocks(cfg,"system password-policy")
+    needed = [
+        r'set\s+status\s+enable',
+        r'set\s+minimum-length\s+(8|9|1\d+)',
+        r'set\s+expire-status\s+enable',
+    ]
+    ok = bool(pol) and all(re.search(n, pol[0], re.I) for n in needed)
+    return ("1.2.2 Password policy enabled (min length ≥8, expire)", OK if ok else BAD,
+            "Found" if ok else "Missing/partial",
+            "System > Admin > Password Policy",
+            "config system password-policy\n  set status enable\n  set minimum-length 12\n  set expire-status enable\nend" if not ok else "")
+
+def check_https_only(cfg:str):
+    intf_blocks = find_blocks(cfg, "system interface")
+    bad_ifaces=[]
+    for blk in intf_blocks:
+        edits = re.split(r'\n\s*edit\s+"?([^"\n]+)"?\s*\n', blk, flags=re.I)
+        for i in range(1, len(edits), 2):
+            name = edits[i].strip().lower()
+            body = edits[i+1]
+            allow = " ".join(extract_kv(body, "allowaccess"))
+            if ("wan" in name or re.search(r'\brole\s+wan\b', body, re.I)) and ("http" in allow):
+                bad_ifaces.append(name)
+    if bad_ifaces:
+        where="Network > Interfaces"
+        cli = "\n".join([f"config system interface\n  edit {n}\n    set allowaccess https ping\n    unset allowaccess http\n  next\nend" for n in bad_ifaces])
+        return ("2.2.2 Administrative access via HTTPS only on WAN", BAD,
+                "HTTP enabled on: "+", ".join(bad_ifaces), where, cli)
+    has_https = any(contains(blk, r'set\s+allowaccess.*\bhttps\b') for blk in intf_blocks)
+    any_http  = any(contains(blk, r'set\s+allowaccess.*\bhttp\b')  for blk in intf_blocks)
+    if has_https and not any_http:
+        return ("2.2.2 Administrative access via HTTPS only on WAN", OK,
+                "No interfaces with HTTP allowaccess", "", "")
+    return ("2.2.2 Administrative access via HTTPS only on WAN", BAD,
+            "HTTP allowaccess detected", "Network > Interfaces",
+            "edit <wanX> and remove 'http' from allowaccess")
+
+def check_ntp_two_servers(cfg:str):
+    ntp_blocks = find_blocks(cfg, "system ntp")
+    if not ntp_blocks:
+        return ("2.2.1 At least two NTP servers", BAD, "No NTP block",
+                "System > Settings > Time & NTP",
+                "config system ntp\n  set ntpsync enable\n  set type custom\n  set server \"0.pool.ntp.org\" \"1.pool.ntp.org\"\nend")
+    servers = re.findall(r'\bset\s+server\b\s+(.+)', ntp_blocks[0], flags=re.I)
+    count = 0
+    if servers:
+        count = len(re.findall(r'\"[^\"]+\"|\S+', servers[0]))
+    if count >= 2:
+        return ("2.2.1 At least two NTP servers", OK, f"{count} servers configured", "", "")
+    return ("2.2.1 At least two NTP servers", BAD, f"Only {count} server(s) configured",
+            "System > Settings > Time & NTP",
+            "config system ntp\n  set ntpsync enable\n  set type custom\n  set server \"0.pool.ntp.org\" \"1.pool.ntp.org\"\nend")
+
+def check_snmpv3_only(cfg:str):
+    snmp = find_blocks(cfg, "system snmp")
+    v3only = any(contains(b, r'set\s+v3-only\s+enable') for b in snmp)
+    return ("2.4.1 Only SNMPv3 enabled", OK if v3only else BAD,
+            "v3-only enable" if v3only else "SNMPv3-only not enforced",
+            "System > SNMP",
+            "config system snmp\n  set v3-only enable\nend" if not v3only else "")
+
+# ======================================================
+
+def run_all(cfg:str):
+    checks = [
+        check_admin_timeout,
+        check_ssh_grace,
+        check_ssh_v1,
+        check_concurrent,
+        check_change_admin_port,
+        check_trusted_hosts_admin,
+        check_password_policy,
+        check_https_only,
+        check_ntp_two_servers,
+        check_snmpv3_only,
+    ]
+    rows = []
+    for fn in checks:
         try:
-            with open(self.config_file, 'r') as f:
-                self.config_content = f.read()
+            rows.append(fn(cfg))
         except Exception as e:
-            print(f"Error reading config file: {e}")
-            self.config_content = ""
-
-    def print_banner(self):
-        print("========================================")
-        print("Tool: Fortigate CIS Benchmark Audit Tool")
-        print("Creator: Priyam Patel")
-        print("========================================")
-
-    def grep_config(self, pattern):
-        """Simulates grep functionality for config file"""
-        try:
-            return bool(re.search(pattern, self.config_content))
-        except Exception as e:
-            print(f"Error searching config file: {e}")
-            return False
-
-    def check_dns_configuration(self):
-        """Check DNS server configuration"""
-        if self.grep_config(r"config system dns"):
-            return "PASS: DNS server is configured"
-        return "FAIL: DNS server is not configured"
-
-    def check_intra_zone_traffic(self):
-        """Check intra-zone traffic configuration"""
-        if self.grep_config(r"set intra-zone-deny enable"):
-            return "PASS: Intra-zone traffic is not always allowed"
-        return "FAIL: Intra-zone traffic is always allowed"
-
-    def check_wan_management_services(self):
-        """Check WAN management services"""
-        if (self.grep_config(r"config system interface") and 
-            self.grep_config(r"set allowaccess ping http")):
-            return "FAIL: Management related services are enabled on WAN port"
-        return "PASS: Management related services are disabled on WAN port"
-
-    def check_pre_login_banner(self):
-        """Check pre-login banner configuration"""
-        if (self.grep_config(r"config system global") and 
-            self.grep_config(r"set pre-login-banner")):
-            return "PASS: Pre-Login Banner is set"
-        return "FAIL: Pre-Login Banner is not set"
-
-    def check_post_login_banner(self):
-        """Check post-login banner configuration"""
-        if (self.grep_config(r"config system global") and 
-            self.grep_config(r"set post-login-banner")):
-            return "PASS: Post-Login Banner is set"
-        return "FAIL: Post-Login Banner is not set"
-
-    def check_timezone_configuration(self):
-        """Check timezone configuration"""
-        if (self.grep_config(r"config system global") and 
-            self.grep_config(r"set timezone")):
-            return "PASS: Timezone is properly configured"
-        return "FAIL: Timezone is not properly configured"
-
-    def check_ntp_configuration(self):
-        """Check NTP configuration"""
-        if (self.grep_config(r"config system ntp") and 
-            self.grep_config(r"set server")):
-            return "PASS: Correct system time is configured through NTP"
-        return "FAIL: Correct system time is not configured through NTP"
-
-    def check_hostname_configuration(self):
-        """Check hostname configuration"""
-        if (self.grep_config(r"config system global") and 
-            self.grep_config(r"set hostname")):
-            return "PASS: Hostname is set"
-        return "FAIL: Hostname is not set"
-
-    def check_usb_disable(self):
-        """Check USB firmware and configuration installation"""
-        if (self.grep_config(r"config system global") and 
-            self.grep_config(r"set usb-auto-install")):
-            return "FAIL: USB Firmware and configuration installation is enabled"
-        return "PASS: USB Firmware and configuration installation is disabled"
-
-    def check_global_strong_encryption(self):
-        """Check global strong encryption settings"""
-        if (self.grep_config(r"config system global") and 
-            self.grep_config(r"set strong-crypto")):
-            return "PASS: Global Strong Encryption is enabled"
-        return "FAIL: Global Strong Encryption is not enabled"
-
-    def check_password_policy(self):
-        """Check password policy configuration"""
-        if (self.grep_config(r"config system global") and 
-            self.grep_config(r"set password-policy")):
-            return "PASS: Password Policy is enabled"
-        return "FAIL: Password Policy is not enabled"
-
-    def check_password_retries_lockout(self):
-        """Check password retries and lockout configuration"""
-        if (self.grep_config(r"config system global") and 
-            self.grep_config(r"set admin-lockout")):
-            return "PASS: Administrator password retries and lockout time are configured"
-        return "FAIL: Administrator password retries and lockout time are not configured"
-
-    def check_snmpv3_only(self):
-        """Check SNMPv3 configuration"""
-        if (self.grep_config(r"config system snmp") and 
-            self.grep_config(r"set v3-only")):
-            return "PASS: Only SNMPv3 is enabled"
-        return "FAIL: Only SNMPv3 is not enabled"
-
-    def check_idle_timeout(self):
-        """Check idle timeout configuration"""
-        if (self.grep_config(r"config system global") and 
-            self.grep_config(r"set admin-sessions-timeout")):
-            return "PASS: Idle timeout time is configured"
-        return "FAIL: Idle timeout time is not configured"
-
-    def check_ha_configuration(self):
-        """Check High Availability configuration"""
-        if self.grep_config(r"config system ha"):
-            return "PASS: High Availability configuration is enabled"
-        return "FAIL: High Availability configuration is not enabled"
-
-    def check_ha_monitor_interfaces(self):
-        """Check HA monitor interfaces configuration"""
-        if (self.grep_config(r"config system ha") and 
-            self.grep_config(r"set monitor-interface")):
-            return "PASS: 'Monitor Interfaces' for High Availability devices is enabled"
-        return "FAIL: 'Monitor Interfaces' for High Availability devices is not enabled"
-
-    def check_antivirus_updates(self):
-        """Check antivirus definition updates configuration"""
-        if (self.grep_config(r"config antivirus settings") and 
-            self.grep_config(r"set update-schedule enable")):
-            return "PASS: Antivirus definition updates are enabled"
-        return "FAIL: Antivirus definition updates are not enabled"
-
-    def check_ips_signatures(self):
-        """Check IPS signature updates configuration"""
-        if (self.grep_config(r"config ips global") and 
-            self.grep_config(r"set database regular")):
-            return "PASS: IPS signature updates are configured"
-        return "FAIL: IPS signature updates are not configured"
-
-    def check_ssl_inspection(self):
-        """Check SSL/SSH inspection configuration"""
-        if (self.grep_config(r"config firewall ssl-ssh-profile") and 
-            self.grep_config(r"set inspect-all")):
-            return "PASS: SSL/SSH inspection is properly configured"
-        return "FAIL: SSL/SSH inspection is not properly configured"
-
-    def check_web_filtering(self):
-        """Check web filtering configuration"""
-        if (self.grep_config(r"config webfilter profile") and 
-            self.grep_config(r"set web-filter-activation enable")):
-            return "PASS: Web filtering is enabled"
-        return "FAIL: Web filtering is not enabled"
-
-    def check_application_control(self):
-        """Check application control configuration"""
-        if (self.grep_config(r"config application list") and 
-            self.grep_config(r"set deep-app-inspection enable")):
-            return "PASS: Application control is properly configured"
-        return "FAIL: Application control is not properly configured"
-
-    def check_dos_policy(self):
-        """Check DoS policy configuration"""
-        if (self.grep_config(r"config firewall DoS-policy") and 
-            self.grep_config(r"set status enable")):
-            return "PASS: DoS protection is enabled"
-        return "FAIL: DoS protection is not enabled"
-
-    def check_admin_https_redirect(self):
-        """Check admin HTTPS redirect configuration"""
-        if (self.grep_config(r"config system global") and 
-            self.grep_config(r"set admin-https-redirect enable")):
-            return "PASS: Admin HTTPS redirect is enabled"
-        return "FAIL: Admin HTTPS redirect is not enabled"
-
-    def check_admin_ssh_grace_time(self):
-        """Check SSH grace time configuration"""
-        if (self.grep_config(r"config system global") and 
-            self.grep_config(r"set admin-ssh-grace-time 120")):
-            return "PASS: SSH grace time is properly configured"
-        return "FAIL: SSH grace time is not properly configured"
-
-    def check_admin_ssh_port(self):
-        """Check SSH port configuration"""
-        if (self.grep_config(r"config system global") and 
-            not self.grep_config(r"set admin-ssh-port 22")):
-            return "PASS: SSH port is not using default port 22"
-        return "FAIL: SSH port is using default port 22"
-
-    def check_syslog_server(self):
-        """Check syslog server configuration"""
-        if (self.grep_config(r"config log syslogd setting") and 
-            self.grep_config(r"set status enable")):
-            return "PASS: Syslog server is configured"
-        return "FAIL: Syslog server is not configured"
-
-    def check_log_disk_usage(self):
-        """Check log disk usage configuration"""
-        if (self.grep_config(r"config log disk setting") and 
-            self.grep_config(r"set full-first-warning")):
-            return "PASS: Log disk usage alerts are configured"
-        return "FAIL: Log disk usage alerts are not configured"
-
-    def check_fortianalyzer_logging(self):
-        """Check FortiAnalyzer logging configuration"""
-        if (self.grep_config(r"config log fortianalyzer setting") and 
-            self.grep_config(r"set status enable")):
-            return "PASS: FortiAnalyzer logging is enabled"
-        return "FAIL: FortiAnalyzer logging is not enabled"
-
-    def check_sdwan_configuration(self):
-        """Check SD-WAN configuration"""
-        if (self.grep_config(r"config system sdwan") and 
-            self.grep_config(r"set status enable")):
-            return "PASS: SD-WAN is configured"
-        return "FAIL: SD-WAN is not configured"
-
-    def check_bgp_neighbor_authentication(self):
-        """Check BGP neighbor authentication"""
-        if (self.grep_config(r"config router bgp") and 
-            self.grep_config(r"set password")):
-            return "PASS: BGP neighbor authentication is configured"
-        return "FAIL: BGP neighbor authentication is not configured"
-
-    def check_ospf_authentication(self):
-        """Check OSPF authentication"""
-        if (self.grep_config(r"config router ospf") and 
-            self.grep_config(r"set authentication")):
-            return "PASS: OSPF authentication is configured"
-        return "FAIL: OSPF authentication is not configured"
-
-    def check_admin_timeout(self):
-        """1.1.1 Ensure 'admin-timeout' is set to 5 minutes or less"""
-        if (self.grep_config(r"config system global") and 
-            self.grep_config(r"set admin-timeout [1-5]")):
-            return "PASS: Admin timeout is set to 5 minutes or less"
-        return "FAIL: Admin timeout is not properly configured"
-
-    def check_admin_ssh_grace_time_v2(self):
-        """1.1.2 Ensure 'admin-ssh-grace-time' is set to 60 seconds or less"""
-        if (self.grep_config(r"config system global") and 
-            self.grep_config(r"set admin-ssh-grace-time [1-6][0-9]")):
-            return "PASS: SSH grace time is set to 60 seconds or less"
-        return "FAIL: SSH grace time exceeds 60 seconds"
-
-    def check_admin_ssh_v1(self):
-        """1.1.3 Ensure SSH v1 is disabled"""
-        if not self.grep_config(r"set admin-ssh-v1 enable"):
-            return "PASS: SSH v1 is disabled"
-        return "FAIL: SSH v1 is enabled"
-
-    def check_admin_concurrent_sessions(self):
-        """1.1.4 Ensure concurrent admin sessions is set to 1"""
-        if (self.grep_config(r"config system global") and 
-            self.grep_config(r"set admin-concurrent-sessions 1")):
-            return "PASS: Concurrent admin sessions limited to 1"
-        return "FAIL: Concurrent admin sessions not properly limited"
-
-    def check_admin_port(self):
-        """1.1.5 Ensure default 'admin' port is changed"""
-        if not self.grep_config(r"set admin-port 80"):
-            return "PASS: Default admin port is changed"
-        return "FAIL: Default admin port (80) is still in use"
-
-    def check_trusted_hosts(self):
-        """1.2.1 Ensure trusted hosts are configured for all admin accounts"""
-        if (self.grep_config(r"config system admin") and 
-            self.grep_config(r"set trustedhost")):
-            return "PASS: Trusted hosts are configured"
-        return "FAIL: Trusted hosts are not configured"
-
-    def check_password_policy_v2(self):
-        """1.2.2 Ensure password policy is enabled"""
-        conditions = [
-            r"set status enable",
-            r"set minimum-length 8",
-            r"set must-contain upper-case-letter lower-case-letter number special-character",
-            r"set change-4-characters enable",
-            r"set expire-status enable",
-            r"set expire-day 90"
-        ]
-        
-        if all(self.grep_config(cond) for cond in conditions):
-            return "PASS: Password policy is properly configured"
-        return "FAIL: Password policy is not properly configured"
-
-    def check_password_hash_algorithm(self):
-        """1.2.3 Ensure strong password hash algorithm is used"""
-        if (self.grep_config(r"config system password-policy") and 
-            self.grep_config(r"set hash sha256")):
-            return "PASS: Strong password hash algorithm is used"
-        return "FAIL: Weak password hash algorithm in use"
-
-    def check_admin_lockout(self):
-        """1.2.4 Ensure administrator account lockout is enabled"""
-        if (self.grep_config(r"config system global") and 
-            self.grep_config(r"set admin-lockout-threshold") and
-            self.grep_config(r"set admin-lockout-duration")):
-            return "PASS: Administrator account lockout is enabled"
-        return "FAIL: Administrator account lockout is not enabled"
-
-    def check_interface_trusted_hosts(self):
-        """1.3.1 Ensure interfaces have trusted hosts configured"""
-        if (self.grep_config(r"config system interface") and 
-            self.grep_config(r"set allowaccess") and
-            self.grep_config(r"set trusted-hosts")):
-            return "PASS: Interface trusted hosts are configured"
-        return "FAIL: Interface trusted hosts are not configured"
-
-    def check_default_admin_profile(self):
-        """1.3.2 Ensure default admin profile is not used"""
-        if not self.grep_config(r"set accprofile default"):
-            return "PASS: Default admin profile is not used"
-        return "FAIL: Default admin profile is in use"
-
-    def check_admin_password_change(self):
-        """1.3.3 Ensure admin password change on first login"""
-        if (self.grep_config(r"config system admin") and 
-            self.grep_config(r"set force-password-change enable")):
-            return "PASS: Admin password change on first login is enabled"
-        return "FAIL: Admin password change on first login is not enabled"
-
-    def check_strong_encryption(self):
-        """2.1.1 Ensure strong encryption is used"""
-        if (self.grep_config(r"config system global") and 
-            self.grep_config(r"set strong-crypto enable")):
-            return "PASS: Strong encryption is enabled"
-        return "FAIL: Strong encryption is not enabled"
-
-    def check_ssl_versions(self):
-        """2.1.2 Ensure only approved SSL/TLS versions are used"""
-        if self.grep_config(r"set ssl-min-proto-version tls1-2"):
-            return "PASS: Only approved SSL/TLS versions are enabled"
-        return "FAIL: Insecure SSL/TLS versions are enabled"
-
-    def check_fips_mode(self):
-        """2.1.3 Ensure FIPS mode is enabled"""
-        if (self.grep_config(r"config system global") and 
-            self.grep_config(r"set fips-mode enable")):
-            return "PASS: FIPS mode is enabled"
-        return "FAIL: FIPS mode is not enabled"
-
-    def check_ntp_servers(self):
-        """2.2.1 Ensure at least two NTP servers are configured"""
-        if (self.grep_config(r"config system ntp") and 
-            len(re.findall(r"set server", self.config_content)) >= 2):
-            return "PASS: At least two NTP servers are configured"
-        return "FAIL: Less than two NTP servers are configured"
-
-    def check_admin_https(self):
-        """2.2.2 Ensure administrative access via HTTPS only"""
-        if (self.grep_config(r"config system interface") and 
-            self.grep_config(r"set allowaccess https") and
-            not self.grep_config(r"set allowaccess http")):
-            return "PASS: Administrative access is HTTPS only"
-        return "FAIL: HTTP access is enabled"
-
-    def get_benchmark_config_template(self, benchmark_id):
-        """Return the recommended configuration template for a given benchmark ID"""
-        templates = {
-            "1.1.1": """config system global
-    set admin-timeout 5
-end""",
-            
-            "1.1.2": """config system global
-    set admin-ssh-grace-time 60
-end""",
-            
-            "1.1.3": """config system global
-    set admin-ssh-v1 disable
-end""",
-            
-            "1.1.4": """config system global
-    set admin-concurrent-sessions 1
-end""",
-            
-            "1.1.5": """config system global
-    set admin-port 8443    # Example: using port 8443 instead of 80
-end""",
-            
-            "1.2.1": """config system admin
-    edit "admin"
-        set trustedhost 192.168.1.0/24 10.0.0.0/24    # Example trusted networks
-    next
-end""",
-            
-            "1.2.2": """config system password-policy
-    set status enable
-    set minimum-length 8
-    set must-contain upper-case-letter lower-case-letter number special-character
-    set change-4-characters enable
-    set expire-status enable
-    set expire-day 90
-end""",
-            
-            "1.2.3": """config system password-policy
-    set hash sha256
-end""",
-            
-            "1.2.4": """config system global
-    set admin-lockout-threshold 3
-    set admin-lockout-duration 300
-end""",
-            
-            "1.3.1": """config system interface
-    edit "port1"
-        set allowaccess ping https ssh
-        set trusted-hosts 192.168.1.0/24
-    next
-end""",
-            
-            "2.1.1": """config system global
-    set strong-crypto enable
-end""",
-            
-            "2.1.2": """config system global
-    set ssl-min-proto-version tls1-2
-end""",
-            
-            "2.1.3": """config system global
-    set fips-mode enable
-end""",
-            
-            "2.2.1": """config system ntp
-    set ntpsync enable
-    set type custom
-    set server "0.pool.ntp.org" "1.pool.ntp.org"
-end""",
-            
-            "2.2.2": """config system interface
-    edit "port1"
-        set allowaccess https
-        unset allowaccess http    # Ensure HTTP is disabled
-    next
-end"""
-        }
-        return templates.get(benchmark_id, "No template available for this benchmark")
-
-    def get_fix_commands(self, benchmark_id):
-        """Return the CLI commands needed to fix a failed check"""
-        fix_commands = {
-            "1.1.1": """config system global
-    set admin-timeout 5
-end""",
-            
-            "1.1.2": """config system global
-    set admin-ssh-grace-time 60
-end""",
-            
-            "1.1.3": """config system global
-    set admin-ssh-v1 disable
-end""",
-            
-            "1.1.4": """config system global
-    set admin-concurrent-sessions 1
-end""",
-            
-            "1.1.5": """config system global
-    set admin-port 8443
-end""",
-            
-            "1.2.1": """config system admin
-    edit "admin"
-        set trustedhost 192.168.1.0/24 10.0.0.0/24
-    next
-end""",
-            
-            "1.2.2": """config system password-policy
-    set status enable
-    set minimum-length 8
-    set must-contain upper-case-letter lower-case-letter number special-character
-    set change-4-characters enable
-    set expire-status enable
-    set expire-day 90
-end""",
-            
-            "2.1.1": """config system global
-    set strong-crypto enable
-end""",
-            
-            "2.1.2": """config system global
-    set ssl-min-proto-version tls1-2
-end""",
-
-            "2.3.1": """config log memory setting
-    set status enable
-    set event enable
-    set admin enable
-end""",
-            
-            "2.3.2": """config log disk setting
-    set status enable
-    set uploadtime 00:00
-    set uploadzip enable
-end""",
-
-            "2.4.1": """config system snmp community
-    edit 1
-        set name "Community_Name"
-        set events cpu-high mem-low log-full
-        set status enable
-        config hosts
-            edit 1
-                set ip 192.168.1.100
-            next
-        end
-    next
-end"""
-        }
-        return fix_commands.get(benchmark_id, "No fix commands available")
-
-    def generate_csv_report(self, results):
-        """Generate CSV report from results"""
-        try:
-            with open(self.csv_file, 'w', newline='') as f:
-                writer = csv.writer(f)
-                # Write header
-                writer.writerow(['Benchmark ID', 'Description', 'Result', 'Fix Location', 'Fix Commands'])
-                
-                # Write results
-                for benchmark, result, _, _ in results:
-                    benchmark_id = benchmark.split()[0]
-                    description = ' '.join(benchmark.split()[1:])
-                    fix_location = self.get_fix_location(benchmark_id)
-                    fix_commands = self.get_fix_commands(benchmark_id) if "FAIL" in result else "No fixes needed"
-                    
-                    writer.writerow([
-                        benchmark_id,
-                        description,
-                        result,
-                        fix_location,
-                        fix_commands
-                    ])
-            print(f"CSV report generated: {self.csv_file}")
-        except Exception as e:
-            print(f"Error generating CSV report: {e}")
-
-    def get_fix_location(self, benchmark_id):
-        """Get the web interface location for fixing a benchmark"""
-        locations = {
-            "1.1": "System > Settings > Administration Settings",
-            "1.2": "System > Admin > Administrator",
-            "2.1": "System > Settings > Security Settings",
-            "2.2": "System > Settings > Time & NTP",
-            "2.3": "Log & Report > Log Settings",
-            "2.4": "System > SNMP"
-        }
-        
-        for prefix, location in locations.items():
-            if benchmark_id.startswith(prefix):
-                return location
-        return "Location not specified"
-
-    def generate_html_report(self, results):
-        """Generate minimalistic HTML report"""
-        total_checks = len(results)
-        total_pass = sum(1 for check in results if "PASS" in check[1])
-        total_fail = sum(1 for check in results if "FAIL" in check[1])
-
-        html_content = f"""
-        <html>
-        <head>
-            <title>FortiGate CIS Audit Report</title>
-            <style>
-                body {{ font-family: Arial, sans-serif; margin: 20px; }}
-                table {{ border-collapse: collapse; width: 100%; }}
-                th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-                th {{ background-color: #f2f2f2; }}
-                .pass {{ color: green; }}
-                .fail {{ color: red; }}
-                .summary {{ margin-bottom: 20px; }}
-                .fix-commands {{ background-color: #f8f9fa; padding: 10px; margin-top: 5px; font-family: monospace; }}
-            </style>
-        </head>
-        <body>
-            <h1>FortiGate CIS Audit Report</h1>
-            <div class="summary">
-                <p>Total Checks: {total_checks} | Passed: {total_pass} | Failed: {total_fail}</p>
-            </div>
-            <table>
-                <tr>
-                    <th>Benchmark</th>
-                    <th>Result</th>
-                    <th>Fix Location</th>
-                    <th>Fix Commands</th>
-                </tr>"""
-
-        for benchmark, result, _, _ in results:
-            benchmark_id = benchmark.split()[0]
-            result_class = "pass" if "PASS" in result else "fail"
-            fix_location = self.get_fix_location(benchmark_id)
-            fix_commands = self.get_fix_commands(benchmark_id) if "FAIL" in result else ""
-
-            html_content += f"""
-                <tr>
-                    <td>{benchmark}</td>
-                    <td class="{result_class}">{result}</td>
-                    <td>{fix_location if "FAIL" in result else ""}</td>
-                    <td>
-                        <div class="fix-commands">{fix_commands if "FAIL" in result else ""}</div>
-                    </td>
-                </tr>"""
-
-        html_content += """
-            </table>
-        </body>
-        </html>"""
-
-        try:
-            with open(self.html_file, 'w') as f:
-                f.write(html_content)
-            print(f"HTML report generated: {self.html_file}")
-        except Exception as e:
-            print(f"Error generating HTML report: {e}")
+            rows.append((fn.__name__, BAD, f"Checker error: {e}", "", ""))
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    base = f"FORTIGATE_CIS_AUDIT_v2_{ts}"
+    csv_path = base + ".csv"
+    html_path = base + ".html"
+    csv_write(rows, csv_path)
+    html_write(rows, html_path)
+    return rows, csv_path, html_path
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: python3 fortigate_cis_audit.py <config_file>")
+    if len(sys.argv)!=2:
+        print("Usage: fortigate_cis_checker_v2.py <config.txt>")
         sys.exit(1)
+    cfg = read_config(sys.argv[1])
+    rows, csv_path, html_path = run_all(cfg)
+    print("Results:")
+    for r in rows:
+        print(" -", r[0], "=>", r[1], "|", r[2])
+    print("CSV:", csv_path)
+    print("HTML:", html_path)
 
-    config_file = sys.argv[1]
-    auditor = FortigateCISAudit(config_file)
-    auditor.print_banner()
-    
-    # Run all checks and collect results
-    results = []
-    for method_name in dir(auditor):
-        if method_name.startswith('check_') and callable(getattr(auditor, method_name)):
-            check_method = getattr(auditor, method_name)
-            result = check_method()
-            results.append((method_name, result, "", ""))
-    
-    # Generate both HTML and CSV reports
-    auditor.generate_html_report(results)
-    auditor.generate_csv_report(results)
-
-if __name__ == "__main__":
+if __name__=="__main__":
     main()
