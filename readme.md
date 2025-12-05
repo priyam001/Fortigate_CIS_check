@@ -79,6 +79,7 @@ Choose the implementation that best suits your environment and requirements.
 ## Output Files
 
 The script generates two output files in the current directory:
+<img width="1734" height="742" alt="image" src="https://github.com/user-attachments/assets/ecf09344-253d-4435-a3f0-606e486137f3" />
 
 1. CSV Report: `FORTIGATE_7.0.x_CIS_BENCHMARK_v1.3.0_AUDIT_YYYYMMDD_HHMMSS.csv`
 2. HTML Report: `FORTIGATE_7.0.x_CIS_BENCHMARK_v1.3.0_AUDIT_YYYYMMDD_HHMMSS.html`
@@ -158,3 +159,4 @@ chmod +x fortigate-cis-check.sh
 - Ensure the configuration file is in plain text format
 - Verify file permissions
 - Check for file corruptio
+
