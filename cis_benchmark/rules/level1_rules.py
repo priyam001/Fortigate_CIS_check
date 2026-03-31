@@ -149,10 +149,10 @@ def _eval_tls_management_gui(rule, config):
 
 
 def _eval_cdn(rule, config):
-    val = config.get_global_setting("gui-cdn", "")
+    val = config.get_global_setting("gui-cdn-usage", "")
     if val.lower() == "enable":
         return rule._make_result(True, "CDN enabled for GUI")
-    return rule._make_result(False, f"gui-cdn: {val or 'not set'}")
+    return rule._make_result(False, f"gui-cdn-usage: {val or 'not set'}")
 
 
 # --- 2.2.x Password Configuration ---
@@ -214,31 +214,6 @@ def _eval_encrypted_access(rule, config):
     return rule._make_result(False, "; ".join(issues))
 
 
-def _eval_ha_configured(rule, config):
-    ha_blocks = config.get_blocks("system ha")
-    if ha_blocks:
-        for b in ha_blocks:
-            mode = b.get("mode", "")
-            if mode and mode.lower() != "standalone":
-                return rule._make_result(True, f"HA mode: {mode}")
-        return rule._make_result(True, "HA section configured")
-    if config.search(r'config system ha'):
-        return rule._make_result(True, "HA configured (raw match)")
-    return rule._make_result(False, "HA not configured")
-
-
-def _eval_ha_monitor_interfaces(rule, config):
-    if config.search(r'set\s+monitor\s+'):
-        return rule._make_result(True, "HA monitor interfaces configured")
-    return rule._make_result(False, "HA monitor interfaces not configured")
-
-
-def _eval_ha_reserved_mgmt(rule, config):
-    if config.search(r'set\s+ha-mgmt-status\s+enable'):
-        return rule._make_result(True, "HA reserved management interface enabled")
-    return rule._make_result(False, "HA reserved management interface not configured")
-
-
 # --- 3.x Firewall Policy ---
 
 def _eval_no_all_service(rule, config):
@@ -268,17 +243,11 @@ def _eval_logging_on_policies(rule, config):
 # --- 4.x Security Profiles ---
 
 def _eval_av_updates(rule, config):
-    if config.search(r'config antivirus'):
-        if config.search(r'set\s+update-schedule|set\s+scheduled-update-status\s+enable'):
+    if config.search(r'config antivirus|config system autoupdate schedule'):
+        if config.search(r'set\s+update-schedule|set\s+scheduled-update-status\s+enable|config system autoupdate schedule\s+set\s+status\s+enable\s+set\s+frequency'):
             return rule._make_result(True, "Antivirus update schedule configured")
         return rule._make_result(False, "Antivirus configured but updates not scheduled")
     return rule._make_result(False, "Antivirus not configured")
-
-
-def _eval_outbreak_prevention(rule, config):
-    if config.search(r'set\s+outbreak-prevention\s+enable|set\s+use-extended-db\s+enable'):
-        return rule._make_result(True, "Outbreak prevention enabled")
-    return rule._make_result(False, "Outbreak prevention not enabled")
 
 
 def _eval_ai_malware(rule, config):
@@ -509,10 +478,10 @@ def get_level1_rules() -> List[CISRule]:
             title="Ensure CDN is enabled for improved GUI performance",
             level=L1, severity=RuleSeverity.LOW,
             description="CDN improves GUI loading performance for distributed management.",
-            expected_value="gui-cdn: enable",
+            expected_value="gui-cdn-usage: enable",
             remediation="Enable CDN in system global",
             category="System", cis_section="2.1.11",
-            remediation_cli="config system global\n  set gui-cdn enable\nend",
+            remediation_cli="config system global\n  set gui-cdn-usage enable\nend",
         ),
 
         # --- 2.2.x Password Configuration ---
@@ -575,39 +544,6 @@ def get_level1_rules() -> List[CISRule]:
             category="Admin", cis_section="2.4.5",
             remediation_cli="config system global\n  set admin-ssh-v1 disable\n  set admin-https-redirect enable\nend",
         ),
-        CallableCISRule(
-            _eval_ha_configured,
-            rule_id="2.4.9",
-            title="Ensure High Availability configuration is enabled",
-            level=L1, severity=RuleSeverity.MEDIUM,
-            description="HA ensures service continuity during device failures.",
-            expected_value="HA configured",
-            remediation="Configure High Availability mode",
-            category="Admin", cis_section="2.4.9",
-            remediation_cli="config system ha\n  set mode a-p\n  set group-name <name>\n  set password <password>\nend",
-        ),
-        CallableCISRule(
-            _eval_ha_monitor_interfaces,
-            rule_id="2.4.10",
-            title="Ensure Monitor Interfaces for HA devices is enabled",
-            level=L1, severity=RuleSeverity.MEDIUM,
-            description="Monitor interfaces trigger failover when a monitored link goes down.",
-            expected_value="Monitor interfaces configured",
-            remediation="Configure HA monitor interfaces",
-            category="Admin", cis_section="2.4.10",
-            remediation_cli="config system ha\n  set monitor <interface_list>\nend",
-        ),
-        CallableCISRule(
-            _eval_ha_reserved_mgmt,
-            rule_id="2.4.11",
-            title="Ensure HA Reserved Management Interface is configured",
-            level=L1, severity=RuleSeverity.MEDIUM,
-            description="Reserved management interface allows direct access during HA failover.",
-            expected_value="HA management interface configured",
-            remediation="Configure HA reserved management interface",
-            category="Admin", cis_section="2.4.11",
-            remediation_cli="config system ha\n  set ha-mgmt-status enable\n  config ha-mgmt-interfaces\n    edit 1\n      set interface <mgmt_port>\n      set gateway <gateway_ip>\n    next\n  end\nend",
-        ),
 
         # --- 3.x Firewall Policy ---
         CallableCISRule(
@@ -655,17 +591,6 @@ def get_level1_rules() -> List[CISRule]:
             remediation="Configure antivirus update schedule",
             category="Security Profiles", cis_section="4.2.1",
             remediation_cli="config antivirus settings\n  set default-db extended\nend",
-        ),
-        CallableCISRule(
-            _eval_outbreak_prevention,
-            rule_id="4.2.3",
-            title="Ensure Outbreak Prevention Database is enabled",
-            level=L1, severity=RuleSeverity.MEDIUM,
-            description="Outbreak prevention provides rapid response to new threats.",
-            expected_value="Outbreak prevention enabled",
-            remediation="Enable outbreak prevention in antivirus settings",
-            category="Security Profiles", cis_section="4.2.3",
-            remediation_cli="config antivirus profile\n  edit <profile_name>\n    set outbreak-prevention enable\n  next\nend",
         ),
         CallableCISRule(
             _eval_ai_malware,
