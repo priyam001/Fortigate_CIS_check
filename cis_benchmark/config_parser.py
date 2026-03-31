@@ -70,6 +70,9 @@ class FortiGateConfig:
     def get_policy_blocks(self) -> List[ConfigBlock]:
         return self.get_blocks("firewall policy")
 
+    def get_av_profile_blocks(self) -> List[ConfigBlock]:
+        return self.get_blocks("antivirus profile")
+
     def get_interface_blocks(self) -> List[ConfigBlock]:
         return self.get_blocks("system interface")
 
@@ -117,6 +120,7 @@ class FortiGateConfigParser:
         r'config system admin',
         r'set hostname',
         r'#config-version=',
+        r'config antivirus profile',
     ]
 
     def parse_file(self, filepath: str) -> FortiGateConfig:
@@ -229,6 +233,11 @@ class FortiGateConfigParser:
         current_edit_settings: Dict[str, str] = {}
         current_edit_start = -1
         in_edit = False
+        current_subconfig_name = ""
+        current_subconfig_settings: Dict[str, str] = {}
+        current_subconfig_start = -1
+        current_subconfig_blocks = []
+        in_subconfig = False
 
         while i < len(lines) and depth > 0:
             line = lines[i].strip()
@@ -237,19 +246,47 @@ class FortiGateConfigParser:
             if line.lower() == 'end':
                 depth -= 1
                 if depth == 0:
+                    # If we were in a subconfig block, save it
+                    if in_subconfig:
+                        sub = ConfigBlock(
+                            block_type=block_type,
+                            name=f"{current_edit_name}.{current_subconfig_name}",
+                            settings=dict(current_subconfig_settings),
+                        )
+                        current_subconfig_blocks.append(sub)
                     # If we were in an edit block, save it
                     if in_edit:
                         sub = ConfigBlock(
                             block_type=block_type,
                             name=current_edit_name,
                             settings=dict(current_edit_settings),
+                            sub_blocks=current_subconfig_blocks,
                         )
                         block.sub_blocks.append(sub)
+                        current_subconfig_blocks = []
                     break
                 i += 1
                 continue
 
-            if re.match(r'^config\s+', line, re.I):
+#            if re.match(r'^config\s+', line, re.I):
+#                depth += 1
+#                i += 1
+#                continue
+
+            # Handle 'config' entries (like in antivirus profile)
+            config_match = re.match(r'^config\s+"?([^"]*)"?\s*$', line, re.I)
+            if config_match:
+                # Save previous subconfig block
+                if in_edit and in_subconfig:
+                    sub = ConfigBlock(
+                        block_type=block_type,
+                        name=f"{current_edit_name}.{current_subconfig_name}",
+                        settings=dict(current_subconfig_settings),
+                    )
+                    current_subconfig_blocks.append(sub)
+                current_subconfig_name = config_match.group(1)
+                current_subconfig_settings = {}
+                in_subconfig = True
                 depth += 1
                 i += 1
                 continue
@@ -263,8 +300,10 @@ class FortiGateConfigParser:
                         block_type=block_type,
                         name=current_edit_name,
                         settings=dict(current_edit_settings),
+                        sub_blocks=current_subconfig_blocks,
                     )
                     block.sub_blocks.append(sub)
+                    current_subconfig_blocks = []
                 current_edit_name = edit_match.group(1)
                 current_edit_settings = {}
                 in_edit = True
@@ -277,8 +316,10 @@ class FortiGateConfigParser:
                         block_type=block_type,
                         name=current_edit_name,
                         settings=dict(current_edit_settings),
+                        sub_blocks=current_subconfig_blocks,
                     )
                     block.sub_blocks.append(sub)
+                    current_subconfig_blocks = []
                     current_edit_name = ""
                     current_edit_settings = {}
                     in_edit = False
@@ -290,7 +331,9 @@ class FortiGateConfigParser:
             if set_match:
                 key = set_match.group(1).lower()
                 value = set_match.group(2).strip().strip('"').strip("'")
-                if in_edit:
+                if in_subconfig:
+                    current_subconfig_settings[key] = value
+                elif in_edit:
                     current_edit_settings[key] = value
                 else:
                     block.settings[key] = value
@@ -299,7 +342,9 @@ class FortiGateConfigParser:
             unset_match = re.match(r'^unset\s+(\S+)', line, re.I)
             if unset_match:
                 key = unset_match.group(1).lower()
-                if in_edit:
+                if in_subconfig:
+                    current_subconfig_settings[key] = value
+                elif in_edit:
                     current_edit_settings[key] = ""
                 else:
                     block.settings[key] = ""

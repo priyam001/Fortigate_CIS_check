@@ -62,6 +62,31 @@ def _eval_default_admin_ports(rule, config):
     return rule._make_result(False, f"Default ports in use: {', '.join(issues)}")
 
 
+def _eval_ha_configured(rule, config):
+    ha_blocks = config.get_blocks("system ha")
+    if ha_blocks:
+        for b in ha_blocks:
+            mode = b.get("mode", "")
+            if mode and mode.lower() != "standalone":
+                return rule._make_result(True, f"HA mode: {mode}")
+        return rule._make_result(True, "HA section configured")
+    if config.search(r'config system ha'):
+        return rule._make_result(True, "HA configured (raw match)")
+    return rule._make_result(False, "HA not configured")
+
+
+def _eval_ha_monitor_interfaces(rule, config):
+    if config.search(r'set\s+monitor\s+'):
+        return rule._make_result(True, "HA monitor interfaces configured")
+    return rule._make_result(False, "HA monitor interfaces not configured")
+
+
+def _eval_ha_reserved_mgmt(rule, config):
+    if config.search(r'set\s+ha-mgmt-status\s+enable'):
+        return rule._make_result(True, "HA reserved management interface enabled")
+    return rule._make_result(False, "HA reserved management interface not configured")
+
+
 def _eval_ssl_vpn_tls(rule, config):
     if config.search(r'config vpn ssl settings'):
         val = config.search_value(r'set\s+ssl-min-proto-ver\s+(\S+)')
@@ -103,23 +128,6 @@ def _eval_sandbox_inspection(rule, config):
     return rule._make_result(False, "Sandbox not configured")
 
 
-def _eval_vpn_ipsec_encryption(rule, config):
-    if config.search(r'config vpn ipsec phase1'):
-        if config.search(r'set\s+proposal\s+.*aes256'):
-            return rule._make_result(True, "IPsec Phase 1 uses AES-256 encryption")
-        proposal = config.search_value(r'set\s+proposal\s+(.+?)$')
-        return rule._make_result(False, f"IPsec encryption: {proposal or 'not AES-256'}")
-    return rule._make_result(False, "IPsec VPN not configured")
-
-
-def _eval_vpn_ipsec_dh_group(rule, config):
-    if config.search(r'config vpn ipsec phase1'):
-        if config.search(r'set\s+dhgrp\s+.*(?:14|19|20|21)'):
-            return rule._make_result(True, "IPsec uses strong DH group (≥14)")
-        return rule._make_result(False, "IPsec DH group may be weak")
-    return rule._make_result(False, "IPsec VPN not configured")
-
-
 def _eval_log_encryption(rule, config):
     if config.search(r'set\s+enc-algorithm\s+(?:high|aes256)'):
         return rule._make_result(True, "Log encryption enabled")
@@ -127,9 +135,9 @@ def _eval_log_encryption(rule, config):
 
 
 def _eval_tor_isdb_blocking(rule, config):
-    if config.search(r'isdb.*tor|set\s+internet-service-id.*tor', re.I):
+    if config.search(r'isdb.*tor|set\s+internet-service-id.*tor', re.I+re.M+re.S):
         return rule._make_result(True, "Tor/malicious ISDB blocking configured")
-    if config.search(r'set\s+action\s+deny.*tor|tor.*deny', re.I):
+    if config.search(r'set\s+action\s+deny.*tor|tor.*deny', re.I+re.M+re.S):
         return rule._make_result(True, "Tor traffic blocking detected")
     return rule._make_result(False, "No explicit Tor/malicious traffic blocking found")
 
@@ -138,6 +146,24 @@ def _eval_botnet_detection(rule, config):
     if config.search(r'set\s+scan-botnet-connections\s+(?:block|monitor)'):
         return rule._make_result(True, "Botnet connection scanning enabled")
     return rule._make_result(False, "Botnet connection scanning not enabled")
+
+
+def _eval_outbreak_prevention(rule, config):
+    profiles = config.get_av_profile_blocks()[0]
+    total_profiles = len(profiles.sub_blocks)
+    total = 0
+    enabled = 0
+    for block in profiles.sub_blocks:
+        for sub in block.sub_blocks:
+            total += 1
+            outbreak_prevention = sub.get("outbreak-prevention", "")
+            if outbreak_prevention and outbreak_prevention.lower() == "block":
+                enabled += 1
+    if total == 0:
+        return rule._make_result(False, "No antivirus profiles found")
+    if enabled == total:
+        return rule._make_result(True, f"Outbreak prevention enabled on all {total} traffic protocols (Combined sum) of all {total_profiles} antivirus profiles")
+    return rule._make_result(False, f"Outbreak prevention enabled on {enabled}/{total} traffic protocols (Combined sum) of all {total_profiles} antivirus profiles")
 
 
 def _eval_dns_filter_logging(rule, config):
@@ -227,6 +253,39 @@ def get_level2_rules() -> List[CISRule]:
             category="Admin", cis_section="2.4.7",
             remediation_cli="config system global\n  set admin-port 8080\n  set admin-sport 8443\n  set admin-ssh-port 2222\nend",
         ),
+        CallableCISRule(
+            _eval_ha_configured,
+            rule_id="2.5.1",
+            title="Ensure High Availability configuration is enabled",
+            level=L2, severity=RuleSeverity.MEDIUM,
+            description="HA ensures service continuity during device failures.",
+            expected_value="HA configured",
+            remediation="Configure High Availability mode",
+            category="High Availability", cis_section="2.5.1",
+            remediation_cli="config system ha\n  set mode a-p\n  set group-name <name>\n  set password <password>\nend",
+        ),
+        CallableCISRule(
+            _eval_ha_monitor_interfaces,
+            rule_id="2.5.2",
+            title="Ensure Monitor Interfaces for HA devices is enabled",
+            level=L2, severity=RuleSeverity.MEDIUM,
+            description="Monitor interfaces trigger failover when a monitored link goes down.",
+            expected_value="Monitor interfaces configured",
+            remediation="Configure HA monitor interfaces",
+            category="High Availability", cis_section="2.5.2",
+            remediation_cli="config system ha\n  set monitor <interface_list>\nend",
+        ),
+        CallableCISRule(
+            _eval_ha_reserved_mgmt,
+            rule_id="2.5.3",
+            title="Ensure HA Reserved Management Interface is configured",
+            level=L2, severity=RuleSeverity.MEDIUM,
+            description="Reserved management interface allows direct access during HA failover.",
+            expected_value="HA management interface configured",
+            remediation="Configure HA reserved management interface",
+            category="High Availability", cis_section="2.5.3",
+            remediation_cli="config system ha\n  set ha-mgmt-status enable\n  config ha-mgmt-interfaces\n    edit 1\n      set interface <mgmt_port>\n      set gateway <gateway_ip>\n    next\n  end\nend",
+        ),
 
         # --- 3.x Advanced Firewall Policy ---
         CallableCISRule(
@@ -252,6 +311,17 @@ def get_level2_rules() -> List[CISRule]:
             remediation="Enable botnet connection scanning on interfaces",
             category="Security Profiles", cis_section="4.1.1",
             remediation_cli="config system interface\n  edit <interface>\n    set scan-botnet-connections block\n  next\nend",
+        ),
+        CallableCISRule(
+            _eval_outbreak_prevention,
+            rule_id="4.2.3",
+            title="Ensure Outbreak Prevention Database is enabled",
+            level=L2, severity=RuleSeverity.MEDIUM,
+            description="Outbreak prevention provides rapid response to new threats.",
+            expected_value="Outbreak prevention enabled on all traffic protocols (Combined sum) of all antivirus profiles",
+            remediation="Enable outbreak prevention in antivirus settings",
+            category="Security Profiles", cis_section="4.2.3",
+            remediation_cli="config antivirus profile\n  edit <profile_name>\n    config <traffic_protocol>\n      set outbreak-prevention block\n  next\nend",
         ),
         CallableCISRule(
             _eval_sandbox_inspection,
@@ -320,28 +390,6 @@ def get_level2_rules() -> List[CISRule]:
             remediation="Set SSL VPN minimum TLS version to 1.2",
             category="VPN", cis_section="6.1.2",
             remediation_cli="config vpn ssl settings\n  set ssl-min-proto-ver tls1-2\nend",
-        ),
-        CallableCISRule(
-            _eval_vpn_ipsec_encryption,
-            rule_id="6.2.1",
-            title="Ensure IPsec VPN uses AES-256 encryption",
-            level=L2, severity=RuleSeverity.HIGH,
-            description="IPsec Phase 1 should use AES-256 or stronger encryption.",
-            expected_value="AES-256 encryption",
-            remediation="Configure IPsec Phase 1 with AES-256",
-            category="VPN", cis_section="6.2.1",
-            remediation_cli="config vpn ipsec phase1-interface\n  edit <tunnel>\n    set proposal aes256-sha256\n  next\nend",
-        ),
-        CallableCISRule(
-            _eval_vpn_ipsec_dh_group,
-            rule_id="6.2.2",
-            title="Ensure IPsec VPN uses strong DH group",
-            level=L2, severity=RuleSeverity.HIGH,
-            description="Diffie-Hellman group should be 14 or higher for key exchange.",
-            expected_value="DH group ≥ 14",
-            remediation="Configure IPsec with DH group 14+",
-            category="VPN", cis_section="6.2.2",
-            remediation_cli="config vpn ipsec phase1-interface\n  edit <tunnel>\n    set dhgrp 14 19 20 21\n  next\nend",
         ),
 
         # --- 7.x Advanced Logging ---
