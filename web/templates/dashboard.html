@@ -340,6 +340,11 @@
             font-weight: 600;
         }
 
+        .manual {
+            color: #d1d5db;
+            font-weight: 600;
+        }
+
         /* Dynamic color classes */
         .color-green {
             color: #10b981;
@@ -428,6 +433,62 @@
             font-weight: 700;
             font-size: 12px;
         }
+
+        /* Notes */
+        .note-cell {
+            min-width: 180px;
+        }
+
+        .note-box {
+            width: 100%;
+            min-width: 160px;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 8px;
+            color: var(--text);
+            font-size: 12px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 32px;
+        }
+
+        .note-box:focus {
+            outline: none;
+            border-color: var(--blue);
+        }
+
+        .note-row-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .note-save-btn {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 4px 10px;
+            color: var(--text2);
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .note-save-btn:hover {
+            background: var(--blue);
+            color: white;
+            border-color: var(--blue);
+        }
+
+        .note-save-btn:disabled {
+            opacity: 0.5;
+            cursor: default;
+        }
+
+        .note-status {
+            font-size: 11px;
+        }
     </style>
 </head>
 
@@ -447,7 +508,9 @@
         <!-- Upload -->
         <div class="upload-section">
             <h2>&#128196; Upload FortiGate Configuration</h2>
-            <p>Upload a FortiGate configuration backup file (.conf) to run CIS Benchmark compliance audit</p>
+            <p>Upload a FortiGate configuration backup file (.conf/.txt/.cfg) to run a CIS FortiGate 7.4.x Benchmark
+                v1.0.1 compliance audit. Everything runs locally -- your configuration is never sent anywhere else,
+                and no remediation is ever applied automatically.</p>
             <form class="upload-form" action="/upload" method="POST" enctype="multipart/form-data">
                 <div class="file-input-wrapper">
                     <input type="file" name="config_file" id="configFile" accept=".conf,.txt,.cfg" required
@@ -461,6 +524,7 @@
                 </select>
                 <button type="submit" class="upload-btn">&#9654; Run Audit</button>
             </form>
+            <div id="uploadError" style="display:none;color:#f87171;font-size:13px;margin-top:16px;"></div>
         </div>
 
         {% if audit.report %}
@@ -473,7 +537,7 @@
                 <div
                     class="value {% if r.overall_percentage >= 80 %}color-green{% elif r.overall_percentage >= 60 %}color-yellow{% else %}color-red{% endif %}">
                     {{ r.overall_percentage }}%</div>
-                <div class="detail">{{ r.passed_rules }}/{{ r.total_rules }} controls passed</div>
+                <div class="detail">{{ r.passed_rules }}/{{ r.evaluated_rules }} evaluated controls passed</div>
                 <div class="risk-badge risk-color-{{ r.risk_rating|lower }}">
                     Risk: {{ r.risk_rating }}
                 </div>
@@ -483,26 +547,31 @@
                 <div
                     class="value {% if r.level1_percentage >= 80 %}color-green{% elif r.level1_percentage >= 60 %}color-yellow{% else %}color-red{% endif %}">
                     {{ r.level1_percentage }}%</div>
-                <div class="detail">{{ r.level1_passed }}/{{ r.level1_total }} passed</div>
+                <div class="detail">{{ r.level1.passed }}/{{ r.level1.evaluated }} evaluated ({{ r.level1_total }} total)</div>
             </div>
             <div class="score-card">
                 <div class="label">Level 2 (Advanced)</div>
                 <div
                     class="value {% if r.level2_percentage >= 80 %}color-green{% elif r.level2_percentage >= 60 %}color-yellow{% else %}color-red{% endif %}">
                     {{ r.level2_percentage }}%</div>
-                <div class="detail">{{ r.level2_passed }}/{{ r.level2_total }} passed</div>
+                <div class="detail">{{ r.level2.passed }}/{{ r.level2.evaluated }} evaluated ({{ r.level2_total }} total)</div>
             </div>
             <div class="score-card">
                 <div class="label">Weighted Score</div>
                 <div
                     class="value {% if r.weighted_score >= 80 %}color-green{% elif r.weighted_score >= 60 %}color-yellow{% else %}color-red{% endif %}">
                     {{ r.weighted_score }}%</div>
-                <div class="detail">Severity-weighted</div>
+                <div class="detail">Severity-weighted, evaluated only</div>
             </div>
             <div class="score-card">
                 <div class="label">Failed Controls</div>
                 <div class="value color-red">{{ r.failed_rules }}</div>
                 <div class="detail">Require remediation</div>
+            </div>
+            <div class="score-card">
+                <div class="label">Manual Review</div>
+                <div class="value" style="color:#d1d5db">{{ r.manual_review_rules }}</div>
+                <div class="detail">Not counted as pass/fail</div>
             </div>
         </div>
 
@@ -523,6 +592,7 @@
                         <th>Severity</th>
                         <th>Actual</th>
                         <th>Remediation</th>
+                        <th>Notes</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -535,6 +605,42 @@
                         </td>
                         <td style="color:var(--orange);font-family:monospace;font-size:12px">{{ res.actual_value }}</td>
                         <td style="font-size:12px;color:var(--text2)">{{ res.remediation }}</td>
+                        {% include "_note_cell.html" %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <!-- Manual Review -->
+        {% if r.manual_review_results %}
+        <div class="section">
+            <h3>&#128269; Requires Manual Review ({{ r.manual_review_rules }})</h3>
+            <p style="color:var(--muted);font-size:12px;margin-bottom:14px;">
+                These controls can't be conclusively verified from a static configuration backup alone (live-device
+                check, external comparison, or human judgement required). Excluded from the compliance percentage.
+            </p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rule ID</th>
+                        <th>Control</th>
+                        <th>Level</th>
+                        <th>Evidence Gathered</th>
+                        <th>Guidance</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for res in r.manual_review_results %}
+                    <tr>
+                        <td style="color:var(--cyan);font-family:monospace;font-weight:600">{{ res.rule_id }}</td>
+                        <td>{{ res.title }}</td>
+                        <td><span class="badge badge-level">L{{ res.level.value }}</span></td>
+                        <td style="color:var(--text2);font-family:monospace;font-size:12px">{{ res.actual_value }}</td>
+                        <td style="font-size:12px;color:var(--text2)">{{ res.remediation }}</td>
+                        {% include "_note_cell.html" %}
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -551,6 +657,7 @@
                 <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
                 <button class="filter-btn" onclick="setFilter('PASS',this)">Pass</button>
                 <button class="filter-btn" onclick="setFilter('FAIL',this)">Fail</button>
+                <button class="filter-btn" onclick="setFilter('MANUAL_REVIEW',this)">Manual Review</button>
                 <button class="filter-btn" onclick="setSevFilter('Critical',this)">Critical</button>
                 <button class="filter-btn" onclick="setSevFilter('High',this)">High</button>
                 <button class="filter-btn" onclick="setSevFilter('Medium',this)">Medium</button>
@@ -565,20 +672,22 @@
                         <th>Severity</th>
                         <th>Status</th>
                         <th>Value</th>
+                        <th>Notes</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for res in r.results %}
-                    <tr data-status="{{ res.status }}" data-severity="{{ res.severity.value }}"
+                    <tr data-status="{{ res.status_value }}" data-severity="{{ res.severity.value }}"
                         data-category="{{ res.category }}">
                         <td style="color:var(--cyan);font-family:monospace;font-weight:600">{{ res.rule_id }}</td>
                         <td>{{ res.title }}</td>
                         <td><span class="badge badge-level">L{{ res.level.value }}</span></td>
                         <td><span class="badge badge-{{ res.severity.value|lower }}">{{ res.severity.value }}</span>
                         </td>
-                        <td><span class="{{ 'pass' if res.passed else 'fail' }}">{{ res.status }}</span></td>
-                        <td class="{% if res.passed %}color-pass{% else %}color-fail{% endif %}"
+                        <td><span class="{% if res.passed %}pass{% elif res.failed %}fail{% else %}manual{% endif %}">{{ res.status_value.replace('_', ' ') }}</span></td>
+                        <td class="{% if res.passed %}color-pass{% elif res.failed %}color-fail{% else %}manual{% endif %}"
                             style="font-family:monospace;font-size:12px">{{ res.actual_value }}</td>
+                        {% include "_note_cell.html" %}
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -610,6 +719,31 @@
             label.textContent = input.files[0] ? '📄 ' + input.files[0].name : '📁 Choose config file...';
         }
 
+        document.querySelector('.upload-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const errBox = document.getElementById('uploadError');
+            errBox.style.display = 'none';
+            const submitBtn = this.querySelector('.upload-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Running audit...';
+            try {
+                const resp = await fetch('/upload', { method: 'POST', body: new FormData(this) });
+                if (resp.redirected) {
+                    window.location.href = resp.url;
+                    return;
+                }
+                const data = await resp.json().catch(() => ({}));
+                errBox.textContent = data.error || 'Upload failed.';
+                errBox.style.display = 'block';
+            } catch (err) {
+                errBox.textContent = 'Upload failed: ' + err;
+                errBox.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '▶ Run Audit';
+            }
+        });
+
         let statusFilter = 'all', sevFilter = 'all';
 
         function filterFailed(q) {
@@ -632,6 +766,33 @@
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             filterAll(document.getElementById('searchAll')?.value || '');
+        }
+
+        async function saveNote(btn) {
+            const cell = btn.closest('.note-cell');
+            const textarea = cell.querySelector('.note-box');
+            const status = cell.querySelector('.note-status');
+            const ruleId = textarea.dataset.ruleId;
+            btn.disabled = true;
+            status.textContent = 'Saving...';
+            status.style.color = 'var(--text2)';
+            try {
+                const resp = await fetch('/note/' + encodeURIComponent(ruleId), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ note: textarea.value })
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) throw new Error(data.error || 'Failed to save note');
+                status.textContent = 'Saved';
+                status.style.color = 'var(--green)';
+            } catch (err) {
+                status.textContent = err.message;
+                status.style.color = 'var(--red)';
+            } finally {
+                btn.disabled = false;
+                setTimeout(() => { status.textContent = ''; }, 2500);
+            }
         }
 
         function setSevFilter(f, btn) {
